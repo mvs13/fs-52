@@ -7,11 +7,19 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+
+const UPLOAD_DIR = './uploads';
 
 @ApiTags('Category')
 @Controller('category')
@@ -44,5 +52,34 @@ export class CategoryController {
   @Delete(':id')
   remove(@Param('id') id: number) {
     return this.categoryService.remove(id);
+  }
+
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('cat_pic', {
+      storage: diskStorage({
+        destination: UPLOAD_DIR,
+        filename: function (req, file, cb) {
+          cb(null, file.fieldname + '-' + Date.now());
+        },
+      }),
+    }),
+  )
+  uploadFile(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /(jpg|jpeg|png|gif)$/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 10000,
+        })
+        .build({
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file: Express.Multer.File,
+  ): void {
+    console.log(file);
   }
 }
